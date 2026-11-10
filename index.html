@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-reporting="hosted" data-report-endpoint="https://think-before-you-share.comfortingwaterlily.chatgpt.site/api/attempts">
+<html lang="en" data-reporting="hosted" data-report-endpoint="https://script.google.com/macros/s/AKfycbyXrz9pk8G4pZCWmTZNVDykbH0An66FCvXonRRzy9s4ZF4Js0AWjFnJ_B7GfN6Pg5w/exec" data-report-transport="apps-script">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -417,6 +417,7 @@ const practiceCases = practiceRows.map((row,i) => story(row,practiceRu[i]));
 const key = "think-before-you-share-study-v4";
 const hosted = document.documentElement.dataset.reporting === "hosted";
 const reportEndpoint = document.documentElement.dataset.reportEndpoint || "/api/attempts";
+const reportTransport = document.documentElement.dataset.reportTransport;
 const screen = document.querySelector("#screen");
 const englishOnly = new URLSearchParams(window.location.search).get("lang") === "en";
 document.documentElement.classList.toggle("english-only", englishOnly);
@@ -553,17 +554,52 @@ function downloadResult() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function checkReceipt(id) {
+  return new Promise(resolve => {
+    const callback = "tbysReceipt_" + crypto.randomUUID().replaceAll("-","");
+    const url = new URL(reportEndpoint);
+    url.searchParams.set("id",id);
+    url.searchParams.set("callback",callback);
+    const script = document.createElement("script");
+    const timer = setTimeout(() => finish(false),8000);
+    function finish(saved) {
+      clearTimeout(timer);
+      delete window[callback];
+      script.remove();
+      resolve(saved === true);
+    }
+    window[callback] = finish;
+    script.onerror = () => finish(false);
+    script.src = url.href;
+    document.head.append(script);
+  });
+}
+
+async function sendReport(payload) {
+  if (reportTransport === "apps-script") {
+    try {
+      await fetch(reportEndpoint,{
+        method:"POST",mode:"no-cors",credentials:"omit",
+        headers:{"Content-Type":"text/plain;charset=UTF-8"},
+        body:JSON.stringify(payload),signal:AbortSignal.timeout(18000)
+      });
+    } catch {}
+    return checkReceipt(payload.id);
+  }
+  const response = await fetch(reportEndpoint,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(payload),signal:AbortSignal.timeout(15000)
+  });
+  return response.ok;
+}
+
 async function submit() {
   if (!hosted || state.sent || submitting || phase() !== "results") return;
   submitting = true;
   reportError = false;
   render();
   try {
-    const response = await fetch(reportEndpoint, {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(reportPayload()), signal:AbortSignal.timeout(10000)
-    });
-    if (!response.ok) throw new Error("Could not save");
+    if (!await sendReport(reportPayload())) throw new Error("Could not save");
     state.sent = true;
     save();
   } catch {
@@ -623,6 +659,10 @@ function render() {
 }
 
 render();
+if (hosted) {
+  submit();
+  window.addEventListener("online", submit);
+}
 </script>
 </body>
 </html>
