@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en" data-reporting="hosted" data-report-endpoint="https://think-before-you-share.comfortingwaterlily.chatgpt.site/api/attempts">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A hands-on fact-checking simulator for first-year students.">
+<title>Think Before You Share</title>
+<style>
+*{box-sizing:border-box}
+:root{color-scheme:light;--paper:#fff;--wash:#f6f6f6;--line:#ccc;--ink:#151515;--muted:#505050}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,sans-serif}
+a{color:inherit;text-underline-offset:.18em}
+:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+h1,h2,p,dl{margin-top:0}
+h1{font:700 clamp(2.3rem,7vw,4.35rem)/1.06 Georgia,serif;letter-spacing:-.04em;margin-bottom:18px}
+h2{font-size:1.2rem;line-height:1.25}
+.wrap{width:min(740px,calc(100% - 36px));margin-inline:auto}
+.bar{border-bottom:3px double var(--ink)}
+.mast,.footer,.meter-label{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.mast{min-height:64px}
+.brand{font:700 1.2rem Georgia,serif;text-decoration:none}
+.edition,.eyebrow{font-size:.72rem;font-weight:750;letter-spacing:.11em}
+.layout{min-height:72vh;padding-block:clamp(22px,5vw,50px)}
+#screen:focus{outline:none}
+.hero{border-bottom:3px double var(--ink);padding-bottom:24px;margin-bottom:24px}
+.lede,.article-text{font-size:clamp(1.04rem,2.5vw,1.2rem);line-height:1.65;max-width:63ch}
+.guide{background:var(--wash);padding:clamp(15px,4vw,24px);margin-block:20px}
+.guide p:last-child,.guide ol:last-child{margin-bottom:0}
+dt{font-weight:750}
+dd{margin:0 0 9px}
+.muted,.byline,.footer{color:var(--muted)}
+button,.button{display:inline-block;font:700 1rem/1.3 system-ui,sans-serif;color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:3px;padding:11px 15px;text-align:center;text-decoration:none;cursor:pointer}
+.primary,.choices [aria-pressed=true],button:hover:not(:disabled),.button:hover{background:var(--ink);color:var(--paper)}
+.primary:hover,.button.primary:hover{background:#363636}
+button:disabled{cursor:default}
+.choices{display:flex;gap:8px;flex-wrap:wrap}
+progress{width:100%;height:12px;accent-color:var(--ink);margin:8px 0 20px}
+.story{border-top:3px double var(--ink);padding-top:20px}
+.claim{font-size:clamp(1.65rem,5.5vw,2.9rem);margin-bottom:12px}
+.byline{font-size:.88rem;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}
+.verdict-panel{border-top:1px solid var(--line);padding-top:15px;margin-top:22px}
+.feedback{border-left:3px solid var(--ink);background:var(--wash);padding:12px 14px;margin-block:15px}
+.feedback p{margin-bottom:7px}
+.feedback p:last-child{margin-bottom:0}
+.source-note{font-size:.88rem}
+details{border-top:1px solid var(--line);padding:10px 0}
+summary{cursor:pointer;font-weight:700}
+details p{margin:8px 0 0}
+#restart{margin-top:14px}
+.footer{border-top:1px solid var(--line);padding-block:16px;font-size:.84rem}
+.skip{position:absolute;left:12px;top:-80px;background:var(--paper);padding:8px}
+.skip:focus{top:8px}
+@media(max-width:420px){.edition{display:none}.choices button{flex:1 1 auto}}
+label{display:block;font-weight:750;margin-bottom:5px}
+input{width:min(100%,320px);font:inherit;padding:10px;border:1px solid var(--ink);border-radius:3px;margin-bottom:8px}
+.steps li{margin-bottom:12px}
+.hint{background:var(--wash);padding:12px}
+.result-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.result-grid p{margin:0;padding:10px;border-top:1px solid var(--ink)}
+.result-grid strong{display:block;font-size:1.8rem}
+.review{margin-top:22px}
+.translation{font-size:.84em;font-weight:400;letter-spacing:normal}
+.article-text > .translation,.hint > .translation,.muted > .translation,.lede > .translation,.steps li > .translation,.guide li > .translation{display:block;margin-top:8px}
+.english-only .translation{display:none}
+#language{font-size:.88rem;padding-block:8px}
+h1 .translation{display:block;font-size:.6em;margin-top:6px;line-height:1.25}
+.english-only h1 .translation{display:none}
+.choices .translation{display:block;margin-top:3px}
+</style>
+
+
+</head>
+<body>
+<a class="skip" href="#screen">Skip to content <span class="translation" lang="ru">(Перейти к содержанию)</span></a>
+<header class="bar"><div class="wrap mast"><span class="brand">Think Before You Share</span><a id="language" href="?lang=en">English only</a></div></header>
+<main class="wrap layout" id="screen" tabindex="-1"></main>
+<footer class="wrap footer"><span>Think Before You Share · Student media literacy project <span class="translation" lang="ru">(Студенческий проект по медиаграмотности)</span></span><span>Real events, simulated headlines and adapted source summaries. <span class="translation" lang="ru">(Реальные события, учебные заголовки и адаптированные тексты источников.)</span></span></footer>
+<script>
+const verdicts = ["Verified", "False", "Not enough evidence"];
+const original = [
+  [
+    "City transport",
+    "Moscow Transport",
+    "1 March 2023",
+    "Moscow’s full Big Circle Line opened in March 2023.",
+    "On 1 March 2023, Moscow Transport reported that trains could now run around the entire Big Circle Line. Some stations had opened earlier. With the final section open, the metro line had 31 stations.",
+    "https://transport.mos.ru/mostrans/all_news/113767",
+    0,
+    "The date matches. The word “full” matters because parts of the line had opened earlier.",
+    "Compare the date and check exactly what opened."
+  ],
+  [
+    "Exhibitions",
+    "National Centre Russia",
+    "Event archive",
+    "The Russia Expo at VDNH closed in June 2024.",
+    "The exhibition ran at VDNH, an exhibition centre in Moscow. The organiser’s archive lists 4 November 2023 as the opening date and 8 July 2024 as the final day.",
+    "https://en.russia.ru/legacy",
+    1,
+    "The organiser lists July as the closing month. The headline moves the event to June.",
+    "Use the original timeline to check a date."
+  ],
+  [
+    "Language",
+    "Gramota.ru",
+    "2024 vote",
+    "Most Russian students used the word “vibe” every day in 2024.",
+    "Gramota.ru named “vibe” its 2024 word of the year. More than 400 language specialists took part in choosing the winner from 11 words. The report describes the experts’ vote and gives no survey of how often students used the word.",
+    "https://gramota.ru/journal/novosti-i-sobytiya/vayb-slovo-2024-goda-po-versii-gramoty",
+    2,
+    "The experts chose a word. Their vote leaves the everyday language habits of students unknown.",
+    "Ask who was surveyed and what they were asked."
+  ],
+  [
+    "Museums",
+    "State Hermitage Museum",
+    "Museum factsheet",
+    "The Hermitage celebrates its founding on 7 December.",
+    "The Hermitage in St Petersburg dates its founding to 1764, when Catherine II acquired a collection of paintings. The museum marks its founding each year on 7 December.",
+    "https://hermitagemuseum.org/about/facts_and_figures",
+    0,
+    "The museum’s own factsheet confirms the annual celebration date.",
+    "Find the organisation responsible for the event."
+  ],
+  [
+    "Animals",
+    "Moscow Transport",
+    "Troika card announcement",
+    "Moscow released five Troika card designs featuring the panda Katyusha.",
+    "Katyusha is a giant panda born at Moscow Zoo in 2023. Moscow Transport put her on Troika travel cards, which people use to pay for public transport. The announcement lists three card designs.",
+    "https://transport.mos.ru/mostrans/all_news/118329",
+    1,
+    "The announcement gives three designs. The headline changes the number to five.",
+    "Compare the headline’s number with the source."
+  ],
+  [
+    "Metro",
+    "Moscow Transport",
+    "7 September 2024",
+    "The opening of the first Troitskaya Line section cut every local passenger’s commute in half.",
+    "Moscow Transport announced that the first section of the Troitskaya metro line was open to passengers. The announcement names the stations that opened. It gives no before-and-after journey times for individual passengers.",
+    "https://transport.mos.ru/mostrans/all_news/121388",
+    2,
+    "The opening is documented. Showing that every commute was halved would require travel-time data for those passengers.",
+    "Look for evidence of the claimed effect."
+  ]
+];
+
+const formB = [
+  [
+    "City transport",
+    "MosTransProject",
+    "9 September 2023",
+    "Moscow’s fourth central rail line opened in September 2023.",
+    "The Moscow Central Diameters are rail lines that cross the city and connect it with nearby towns. MosTransProject records the launch of the fourth line, MCD-4, on 9 September 2023.",
+    "https://mtp.mos.ru/event/zapusk-cetvertogo-moskovskogo-centralnogo-diametra",
+    0,
+    "The project’s launch record gives September 2023.",
+    "Compare the date and check exactly what opened."
+  ],
+  [
+    "Culture",
+    "State Hermitage Museum",
+    "2014 anniversary programme",
+    "The Hermitage celebrated its 250th anniversary in November 2014.",
+    "The museum’s programme places its 250th anniversary celebrations in the first days of December 2014. It lists exhibitions and other events organised for the anniversary.",
+    "https://www.hermitagemuseum.org/what-s-on/hermitagedays2014",
+    1,
+    "The museum lists celebrations in December. The headline moves them to November.",
+    "Use the original timeline to check a date."
+  ],
+  [
+    "Education",
+    "State Tretyakov Gallery",
+    "Tour listing",
+    "Most pupils enjoy painting more than sculpture after these museum tours.",
+    "The Tretyakov Gallery offers a guided tour series for pupils aged 10 to 12. Its description introduces different types of painting. The listing explains what pupils can see and gives no survey of their preferences after the tours.",
+    "https://www.tretyakovgallery.ru/excursions/o/uchimsya-ponimat-iskusstvo-zhanry/",
+    2,
+    "A description of the tour leaves pupils’ preferences unknown.",
+    "Ask who was surveyed and what they were asked."
+  ],
+  [
+    "Language",
+    "Gramota.ru",
+    "2025 award",
+    "Gramota.ru chose “zoomer” as its word of the year for 2025.",
+    "Gramota.ru, a Russian-language reference website, asked language experts to vote for its 2025 word of the year. In its announcement, the website named “zoomer” as the winner.",
+    "https://gramota.ru/journal/novosti-i-sobytiya/zumer-slovo-2025-goda-po-versii-gramoty",
+    0,
+    "The organiser’s announcement confirms both the word and the year.",
+    "Find the organisation responsible for the result."
+  ],
+  [
+    "Metro",
+    "Moscow Transport",
+    "First-stage announcement",
+    "The completed first stage of the Troitskaya metro line had 14 stations.",
+    "Moscow Transport announced the opening of four more stations on the Troitskaya metro line. It said those openings completed the first stage and brought the line to 11 stations in total.",
+    "https://transport.mos.ru/mostrans/all_news/126335",
+    1,
+    "The announcement gives a total of 11 stations. The headline changes it to 14.",
+    "Compare the headline’s number with the source."
+  ]
+];
+const practiceRows = [
+  [
+    "Campus life",
+    "Fictional student union",
+    "Practice scenario",
+    "Every student voted for longer library hours.",
+    "A fictional student union asked members of one club if they wanted the library to stay open later. Twelve club members voted yes. The announcement gives no results for students outside that club.",
+    null,
+    2,
+    "The club vote leaves the views of students outside the club unknown.",
+    "Check who the evidence actually covers."
+  ],
+  [
+    "City events",
+    "Fictional event organiser",
+    "Practice scenario",
+    "The book fair opens on Saturday at 10 a.m.",
+    "In this fictional example, the organiser’s final programme lists the opening for Saturday at 10 a.m. The doors open at the main entrance.",
+    null,
+    0,
+    "The organiser’s programme confirms both the day and the time.",
+    "Match the headline with the original announcement."
+  ]
+];
+
+const [originalRu, formBRu, practiceRu] = [
+  [
+    [
+      "Городской транспорт",
+      "Московский транспорт",
+      "1 марта 2023 года",
+      "Большая кольцевая линия московского метро полностью открылась в марте 2023 года.",
+      [
+        "1 марта 2023 года Московский транспорт сообщил, что поезда теперь могут проехать по всей Большой кольцевой линии.",
+        "Некоторые станции открылись раньше.",
+        "После открытия последнего участка на линии стало 31 станция."
+      ],
+      "Дата совпадает. Слово «полностью» важно, потому что отдельные участки линии открылись раньше.",
+      "Сверьте дату и уточните, что именно открылось."
+    ],
+    [
+      "Выставки",
+      "Национальный центр «Россия»",
+      "Архив мероприятия",
+      "Выставка «Россия» на ВДНХ закрылась в июне 2024 года.",
+      [
+        "Выставка проходила на ВДНХ, выставочном комплексе в Москве.",
+        "По архиву организатора выставка открылась 4 ноября 2023 года, а её последний день — 8 июля 2024 года."
+      ],
+      "Организатор указывает июль как месяц закрытия. В заголовке месяц заменили на июнь.",
+      "Сверьте дату с хронологией в первоисточнике."
+    ],
+    [
+      "Язык",
+      "Грамота.ру",
+      "Голосование 2024 года",
+      "Большинство российских студентов употребляли слово «вайб» каждый день в 2024 году.",
+      [
+        "Грамота.ру назвала «вайб» словом 2024 года.",
+        "Более 400 специалистов по языку выбирали победителя из 11 слов.",
+        "В публикации описано голосование экспертов. Данных о том, как часто студенты употребляли это слово, там нет."
+      ],
+      "Эксперты выбрали слово года. Их голосование не показывает, как часто студенты употребляли это слово.",
+      "Проверьте, кого и о чём спрашивали."
+    ],
+    [
+      "Музеи",
+      "Государственный Эрмитаж",
+      "Справка музея",
+      "Эрмитаж отмечает день основания 7 декабря.",
+      [
+        "Эрмитаж в Санкт-Петербурге считает годом своего основания 1764-й, когда Екатерина II приобрела коллекцию картин.",
+        "Музей ежегодно отмечает день основания 7 декабря."
+      ],
+      "Справка самого музея подтверждает дату ежегодного праздника.",
+      "Найдите организацию, которая отвечает за мероприятие."
+    ],
+    [
+      "Животные",
+      "Московский транспорт",
+      "Сообщение о картах «Тройка»",
+      "Москва выпустила пять вариантов карт «Тройка» с пандой Катюшей.",
+      [
+        "Катюша — большая панда, которая родилась в Московском зоопарке в 2023 году.",
+        "Московский транспорт разместил её изображение на картах «Тройка», которыми оплачивают проезд.",
+        "В сообщении указаны три варианта оформления карты."
+      ],
+      "В сообщении указаны три варианта оформления. В заголовке число заменили на пять.",
+      "Сверьте число в заголовке с первоисточником."
+    ],
+    [
+      "Метро",
+      "Московский транспорт",
+      "7 сентября 2024 года",
+      "Открытие первого участка Троицкой линии вдвое сократило время в пути для каждого местного пассажира.",
+      [
+        "Московский транспорт объявил, что первый участок Троицкой линии метро открылся для пассажиров.",
+        "В сообщении перечислены открывшиеся станции.",
+        "Данных о времени поездок отдельных пассажиров до и после открытия в нём нет."
+      ],
+      "Открытие подтверждено. Чтобы выяснить, сократилась ли каждая поездка вдвое, нужны данные о времени в пути этих пассажиров.",
+      "Ищите доказательства именно того эффекта, о котором говорится в заголовке."
+    ]
+  ],
+  [
+    [
+      "Городской транспорт",
+      "МосТрансПроект",
+      "9 сентября 2023 года",
+      "Четвёртый Московский центральный диаметр открыли в сентябре 2023 года.",
+      [
+        "Московские центральные диаметры — это железнодорожные линии, которые пересекают город и связывают его с ближайшими городами.",
+        "МосТрансПроект указывает, что четвёртую линию, МЦД-4, открыли 9 сентября 2023 года."
+      ],
+      "В сообщении о запуске указан сентябрь 2023 года.",
+      "Сверьте дату и уточните, что именно открылось."
+    ],
+    [
+      "Культура",
+      "Государственный Эрмитаж",
+      "Программа юбилея 2014 года",
+      "Эрмитаж отметил своё 250-летие в ноябре 2014 года.",
+      [
+        "Согласно программе музея, торжества по случаю 250-летия прошли в первых числах декабря 2014 года.",
+        "В программе перечислены выставки и другие мероприятия к юбилею."
+      ],
+      "Музей указывает, что торжества прошли в декабре. В заголовке месяц заменили на ноябрь.",
+      "Сверьте дату с хронологией в первоисточнике."
+    ],
+    [
+      "Образование",
+      "Государственная Третьяковская галерея",
+      "Описание экскурсии",
+      "После этих экскурсий большинству школьников живопись нравится больше, чем скульптура.",
+      [
+        "Третьяковская галерея предлагает цикл экскурсий для школьников от 10 до 12 лет.",
+        "Программа знакомит их с разными жанрами живописи.",
+        "В описании сказано, что увидят школьники, но результатов опроса об их предпочтениях после экскурсий там нет."
+      ],
+      "Из описания экскурсий нельзя определить предпочтения школьников.",
+      "Проверьте, кого и о чём спрашивали."
+    ],
+    [
+      "Язык",
+      "Грамота.ру",
+      "Итоги голосования 2025 года",
+      "Грамота.ру выбрала «зумер» словом 2025 года.",
+      [
+        "Грамота.ру, справочный портал о русском языке, предложила специалистам проголосовать за слово 2025 года.",
+        "В объявлении портал назвал победителем слово «зумер»."
+      ],
+      "Сообщение организатора подтверждает и слово, и год.",
+      "Найдите организацию, которая объявила результат."
+    ],
+    [
+      "Метро",
+      "Московский транспорт",
+      "Сообщение о завершении первого этапа",
+      "По завершении первого этапа на Троицкой линии метро было 14 станций.",
+      [
+        "Московский транспорт сообщил об открытии ещё четырёх станций Троицкой линии метро.",
+        "С их открытием завершился первый этап, и на линии стало 11 станций."
+      ],
+      "В сообщении указано 11 станций. В заголовке число заменили на 14.",
+      "Сверьте число в заголовке с первоисточником."
+    ]
+  ],
+  [
+    [
+      "Студенческая жизнь",
+      "Вымышленный студсовет",
+      "Учебная ситуация",
+      "Все студенты проголосовали за продление часов работы библиотеки.",
+      [
+        "Вымышленный студсовет спросил участников одного клуба, хотят ли они, чтобы библиотека работала дольше.",
+        "Двенадцать участников клуба проголосовали за.",
+        "В объявлении нет ответов студентов, которые не состоят в клубе."
+      ],
+      "По голосованию клуба нельзя определить мнение остальных студентов.",
+      "Проверьте, к какой группе относятся данные."
+    ],
+    [
+      "Городские события",
+      "Вымышленный организатор",
+      "Учебная ситуация",
+      "Книжная ярмарка открывается в субботу в 10 утра.",
+      [
+        "В этом вымышленном примере в итоговой программе организатора открытие назначено на субботу, 10 утра.",
+        "Посетители смогут войти через главный вход."
+      ],
+      "Программа организатора подтверждает день и время.",
+      "Сверьте заголовок с объявлением организатора."
+    ]
+  ]
+];
+
+function story([topic, publisher, date, claim, article, url, verdict, explanation, skill],
+               [topicRu, publisherRu, dateRu, claimRu, articleRu, explanationRu, skillRu]) {
+  return {topic, publisher, date, claim, article, url, verdict, explanation, skill,
+          ru:{topic:topicRu, publisher:publisherRu, date:dateRu, claim:claimRu,
+              article:articleRu, explanation:explanationRu, skill:skillRu}};
+}
+
+const forms = [
+  original.slice(0, 5).map((row,i) => story(row,originalRu[i])),
+  [2,4,0,1,3].map(i => story(formB[i],formBRu[i]))
+];
+const workedExample = story(original[5],originalRu[5]);
+const practiceCases = practiceRows.map((row,i) => story(row,practiceRu[i]));
+
+const key = "think-before-you-share-study-v4";
+const hosted = document.documentElement.dataset.reporting === "hosted";
+const reportEndpoint = document.documentElement.dataset.reportEndpoint || "/api/attempts";
+const screen = document.querySelector("#screen");
+const englishOnly = new URLSearchParams(window.location.search).get("lang") === "en";
+document.documentElement.classList.toggle("english-only", englishOnly);
+const language = document.querySelector("#language");
+language.textContent = englishOnly ? "English + Russian" : "English only";
+language.href = englishOnly ? "?lang=ru" : "?lang=en";
+const tr = (english, russian) => englishOnly ? english : `${english} <span class="translation" lang="ru">(${russian})</span>`;
+const verdictsRu = ["Подтверждено", "Ложь", "Недостаточно доказательств"];
+const verdict = index => tr(verdicts[index], verdictsRu[index]);
+const fresh = () => ({id:"", name:"", order:0, before:[], practice:[], after:[], learned:false, reviewing:false, sent:false});
+let state = fresh();
+try {
+  const saved = JSON.parse(localStorage.getItem(key));
+  if (saved?.id) state = saved;
+} catch {}
+let submitting = false;
+let reportError = false;
+
+function save() {
+  try { localStorage.setItem(key, JSON.stringify(state)); } catch {}
+}
+
+const before = () => forms[state.order];
+const after = () => forms[1-state.order];
+const score = (cases, answers) => cases.filter((story,i) => story.verdict === answers[i]).length;
+const source = story => story.url ? `<p class="source-note"><a href="${story.url}" target="_blank" rel="noopener noreferrer">${tr(`Original source · ${story.publisher} (opens in new tab)`, `Первоисточник · ${story.ru.publisher}, откроется в новой вкладке`)}</a></p>` : "";
+const heading = (label, title, body) => `<section class="hero"><p class="eyebrow">${label}</p><h1>${title}</h1><p class="lede">${body}</p></section>`;
+const phase = () => !state.id ? "home" : state.before.length < 5 ? "before" : !state.learned ? "learn" : state.practice.length < practiceCases.length || state.reviewing ? "practice" : state.after.length < 5 ? "after" : "results";
+
+function home() {
+  screen.innerHTML = `${heading(tr("MEDIA LITERACY / TRAINING EDITION", "Тренажёр по медиаграмотности"),tr("Think Before You Share", "Подумай, прежде чем поделиться"),tr("Practise checking headlines from the Russian news cycle. Every exercise includes the information you need to decide.", "Потренируйтесь проверять заголовки из российского инфополя. Все сведения для ответа есть в задании."))}
+  <section class="guide"><h2>${tr("Your route", "Этапы прохождения")}</h2>
+  <ol><li>${tr("<strong>Before · 5 stories.</strong> Find your starting score.", "До обучения · 5 заданий. Узнайте свой стартовый балл.")}</li>
+  <li>${tr("<strong>Learn &amp; Practise.</strong> Follow a worked example, then try the method with feedback.", "Обучение и практика. Разберите пример, затем примените метод и прочитайте объяснение.")}</li>
+  <li>${tr("<strong>After · 5 new stories.</strong> Apply the method and compare your scores.", "После обучения · 5 новых заданий. Примените метод и сравните свои баллы.")}</li></ol>
+  <p class="muted">${tr("Read the report and choose <strong>Verified</strong> if it supports the headline, <strong>False</strong> if it contradicts it, or <strong>Not enough evidence</strong> if it leaves the claim open.", "Прочитайте текст. Выберите «Подтверждено», если он подтверждает заголовок, «Ложь», если противоречит ему, или «Недостаточно доказательств», если по тексту нельзя сделать вывод.")}</p></section>
+  <form id="start"><label for="participant">${tr("First name or nickname", "Имя или никнейм")}</label>
+  <input required maxlength="40" id="participant" name="participant" aria-describedby="data-note" autocomplete="off">
+  <p id="data-note" class="muted">${hosted ? tr("When you finish, the project organiser receives this name or nickname and your two scores. A nickname is enough.", "После прохождения организатор получит указанное имя или никнейм и два ваших балла. Достаточно никнейма.") : tr("Local preview. This nickname and your progress stay in this browser.", "Локальная версия. Никнейм и прогресс сохраняются в этом браузере.")}</p>
+  <button class="primary">${tr("Start Before →", "Начать входной тест")}</button></form>`;
+  screen.querySelector("#start").onsubmit = event => {
+    event.preventDefault();
+    const input = screen.querySelector("#participant");
+    const name = input.value.trim();
+    if (!name) {
+      input.setCustomValidity(englishOnly ? "Enter a first name or nickname." : "Enter a first name or nickname. (Введите имя или никнейм.)");
+      input.reportValidity();
+      return;
+    }
+    state = {...fresh(), name, id:crypto.randomUUID(), order:crypto.getRandomValues(new Uint8Array(1))[0] % 2};
+    save();
+    render();
+  };
+  screen.querySelector("#participant").oninput = event => event.currentTarget.setCustomValidity("");
+}
+
+function storyText(story) {
+  return `<p class="eyebrow">${tr(`SIMULATED HEADLINE / ${story.topic}`, `Учебный заголовок / ${story.ru.topic}`)}</p>
+  <h1 class="claim">${tr(story.claim,story.ru.claim)}</h1>
+  <p class="byline">${tr(`Source: ${story.publisher} · ${story.date}`, `Источник: ${story.ru.publisher} · ${story.ru.date}`)}</p>
+  <p class="article-text">${tr(story.article,story.ru.article.join(" "))}</p>`;
+}
+
+function learn() {
+  screen.innerHTML = `${heading(tr("02 / LEARN &amp; PRACTISE", "Обучение и практика"),tr("How to check a headline", "Как проверить заголовок"),tr("Follow these three steps before you choose a verdict.", "Прежде чем выбрать ответ, выполните три шага."))}
+  <article class="story">${storyText(workedExample)}
+  <ol class="steps">
+    <li>${tr("<strong>Identify the claim.</strong> The headline says every local passenger’s commute was cut in half.", "Выделите утверждение. В заголовке сказано, что время в пути каждого местного пассажира сократилось вдвое.")}</li>
+    <li>${tr("<strong>Find the relevant evidence.</strong> The transport report confirms that the line opened. Look at what it actually measures: it gives no journey times for individual passengers.", "Найдите подходящие доказательства. Сообщение подтверждает, что линия открылась. Посмотрите, какие данные приводит источник: времени поездок отдельных пассажиров там нет.")}</li>
+    <li>${tr("<strong>Choose a verdict.</strong> <strong>Not enough evidence.</strong> To verify the headline, you would need journey times before and after the opening. Choose <strong>False</strong> when the report gives facts that directly contradict the headline.", "Выберите вердикт. Недостаточно доказательств. Для проверки нужны данные о времени поездок до и после открытия. Выбирайте «Ложь», когда в тексте есть факты, которые прямо противоречат заголовку.")}</li>
+  </ol>${source(workedExample)}</article>
+  <button class="primary" id="learned">${tr("Try the method →", "Попробовать метод")}</button>`;
+  screen.querySelector("#learned").onclick = () => {
+    state.learned = true;
+    save();
+    render();
+  };
+}
+
+function exercise(stage) {
+  const isPractice = stage === "practice";
+  const cases = stage === "before" ? before() : isPractice ? practiceCases : after();
+  const answers = state[stage];
+  const reviewing = isPractice && state.reviewing;
+  const index = answers.length - Number(reviewing);
+  const story = cases[index];
+  const label = {before:tr("01 / BEFORE","До обучения"),practice:tr("02 / LEARN & PRACTISE","Обучение и практика"),after:tr("03 / AFTER","После обучения")}[stage];
+  screen.innerHTML = `<div class="meter-label"><strong>${label}</strong><span>${tr(`Story ${index + 1} of ${cases.length}`,`Задание ${index + 1} из ${cases.length}`)}</span></div>
+  <progress max="${cases.length}" value="${answers.length}" aria-label="Stories answered in this stage"></progress>
+  <article class="story">${storyText(story)}
+  ${isPractice ? `<p class="hint">${tr("<strong>Use the method.</strong> Identify the exact claim. Find the line that supports or contradicts it. If the report leaves it open, choose Not enough evidence.", "Примените метод. Выделите точное утверждение. Найдите фразу, которая подтверждает или опровергает его. Если по тексту нельзя сделать вывод, выберите «Недостаточно доказательств».")}</p>` : ""}
+  <div class="verdict-panel"><h2 id="verdict-label">${tr("What does the report say about the headline?", "Что можно сказать о заголовке на основании текста?")}</h2>
+  <div class="choices" role="group" aria-labelledby="verdict-label">${verdicts.map((_, i) =>
+    `<button data-verdict="${i}" ${reviewing ? `disabled aria-pressed="${answers[index] === i}"` : ""}>${verdict(i)}</button>`).join("")}</div>
+  ${reviewing ? `<div class="feedback" tabindex="-1"><p><strong>${tr("Best answer","Верный ответ")} · ${verdict(story.verdict)}</strong></p><p>${tr(story.explanation,story.ru.explanation)}</p><p>${tr(story.skill,story.ru.skill)}</p>${source(story)}</div>
+  <button id="next" class="primary">${answers.length === cases.length ? tr("Start After →","Начать итоговый тест") : tr("Next story →","Следующее задание")}</button>` : ""}
+  </div></article>`;
+
+  if (reviewing) {
+    screen.querySelector("#next").onclick = () => {
+      state.reviewing = false;
+      save();
+      render();
+    };
+    return;
+  }
+  for (const button of screen.querySelectorAll("[data-verdict]")) {
+    button.onclick = () => {
+      if (answers.length !== index) return;
+      answers.push(Number(button.dataset.verdict));
+      state.reviewing = isPractice;
+      save();
+      render();
+      if (isPractice) screen.querySelector(".feedback").focus();
+      if (hosted && phase() === "results") submit();
+    };
+  }
+}
+
+async function submit() {
+  if (!hosted || state.sent || submitting || phase() !== "results") return;
+  submitting = true;
+  reportError = false;
+  render();
+  try {
+    const {id, name, order, before, after} = state;
+    const response = await fetch(reportEndpoint, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({id, name, order, before, after})
+    });
+    if (!response.ok) throw new Error("Could not save");
+    state.sent = true;
+    save();
+  } catch {
+    reportError = true;
+  } finally {
+    submitting = false;
+    render();
+  }
+}
+
+function results() {
+  const initial = score(before(),state.before);
+  const final = score(after(),state.after);
+  const delta = final - initial;
+  const statuses = {
+    local:tr("Local preview. Your scores stay in this browser.", "Локальная версия. Ваши баллы остаются в этом браузере."),
+    sent:tr("Your result was saved for the project organiser.", "Ваш результат сохранён для организатора."),
+    saving:tr("Saving your result…", "Сохраняем результат…"),
+    failed:tr("Your result could not be sent. You can try again from this screen.", "Результат не удалось отправить. Попробуйте ещё раз на этом экране."),
+    ready:tr("Save your completed result for the project organiser.", "Сохраните результат прохождения для организатора.")
+  };
+  const status = !hosted ? "local" : state.sent ? "sent" : submitting ? "saving" : reportError ? "failed" : "ready";
+  screen.innerHTML = `${heading(tr("04 / RESULTS", "Результаты"),tr("Your results", "Ваши результаты"),tr("Compare your two scores and review the evidence behind each decision.", "Сравните оба балла и посмотрите, на чём основан каждый ответ."))}
+  <div class="result-grid"><p>${tr("Before", "До обучения")}<strong>${initial}/5</strong></p><p>${tr("After", "После обучения")}<strong>${final}/5</strong></p><p>${tr("Change", "Разница")}<strong>${delta > 0 ? "+" : ""}${delta}</strong></p></div>
+  <div class="guide"><p role="status">${statuses[status]}</p>
+  ${["ready","failed"].includes(status) ? `<button id="retry" class="primary">${tr("Save result","Сохранить результат")}</button>` : ""}</div>
+  <section><h2>${tr("Before you share", "Перед тем как поделиться")}</h2><ol><li>${tr("Find the original source and check its date.", "Найдите первоисточник и проверьте его дату.")}</li><li>${tr("Compare the exact claim with the facts in the report.", "Сравните точное утверждение с фактами в тексте.")}</li><li>${tr("Wait before sharing if the evidence is missing.", "Повремените с репостом, если доказательств недостаточно.")}</li></ol></section>
+  ${[[before(),state.before,"Before"],[after(),state.after,"After"]].map(([cases,answers,label]) => `<section class="review"><h2>${tr(`Review · ${label}`, `Разбор · ${label === "Before" ? "До обучения" : "После обучения"}`)}</h2>${cases.map((story,i) =>
+  `<details><summary>${i+1}. ${tr(story.claim,story.ru.claim)}</summary><p>${tr("Your answer","Ваш ответ")}: <strong>${verdict(answers[i])}</strong> · ${tr("Best answer","Верный ответ")}: <strong>${verdict(story.verdict)}</strong></p><p>${tr(story.explanation,story.ru.explanation)}</p>${source(story)}</details>`).join("")}</section>`).join("")}
+  <button id="restart" ${submitting ? "disabled" : ""}>${tr("Start a new run", "Начать заново")}</button>`;
+  const retry = screen.querySelector("#retry");
+  if (retry) retry.onclick = submit;
+  screen.querySelector("#restart").onclick = () => {
+    if (!confirm(englishOnly ? "Clear this run from this browser and start again?" : "Clear this run from this browser and start again? (Очистить это прохождение в браузере и начать заново?)")) return;
+    state = fresh();
+    reportError = false;
+    save();
+    render();
+  };
+}
+
+function render() {
+  const stage = phase();
+  if (stage === "home") home();
+  else if (stage === "learn") learn();
+  else if (stage === "results") results();
+  else exercise(stage);
+  screen.focus();
+}
+
+render();
+</script>
+</body>
+</html>
