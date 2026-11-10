@@ -59,6 +59,7 @@ input{width:min(100%,320px);font:inherit;padding:10px;border:1px solid var(--ink
 .result-grid p{margin:0;padding:10px;border-top:1px solid var(--ink)}
 .result-grid strong{display:block;font-size:1.8rem}
 .review{margin-top:22px}
+.report-actions{display:flex;flex-wrap:wrap;gap:8px}
 .translation{font-size:.84em;font-weight:400;letter-spacing:normal}
 .article-text > .translation,.hint > .translation,.muted > .translation,.lede > .translation,.steps li > .translation,.guide li > .translation{display:block;margin-top:8px}
 .english-only .translation{display:none}
@@ -535,16 +536,32 @@ function exercise(stage) {
   }
 }
 
+function reportPayload() {
+  const {id, name, order, before, after} = state;
+  return {id, name, order, before, after};
+}
+
+function downloadResult() {
+  const file = new Blob([JSON.stringify(reportPayload(), null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `think-before-you-share-${state.id}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function submit() {
   if (!hosted || state.sent || submitting || phase() !== "results") return;
   submitting = true;
   reportError = false;
   render();
   try {
-    const {id, name, order, before, after} = state;
     const response = await fetch(reportEndpoint, {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({id, name, order, before, after})
+      body:JSON.stringify(reportPayload()), signal:AbortSignal.timeout(10000)
     });
     if (!response.ok) throw new Error("Could not save");
     state.sent = true;
@@ -565,22 +582,30 @@ function results() {
     local:tr("Local preview. Your scores stay in this browser.", "Локальная версия. Ваши баллы остаются в этом браузере."),
     sent:tr("Your result was saved for the project organiser.", "Ваш результат сохранён для организатора."),
     saving:tr("Saving your result…", "Сохраняем результат…"),
-    failed:tr("Your result could not be sent. You can try again from this screen.", "Результат не удалось отправить. Попробуйте ещё раз на этом экране."),
-    ready:tr("Save your completed result for the project organiser.", "Сохраните результат прохождения для организатора.")
+    failed:tr("The result server did not confirm receipt.", "Сервер не подтвердил получение результата."),
+    ready:tr("Your result is ready to send.", "Результат готов к отправке.")
   };
   const status = !hosted ? "local" : state.sent ? "sent" : submitting ? "saving" : reportError ? "failed" : "ready";
   screen.innerHTML = `${heading(tr("04 / RESULTS", "Результаты"),tr("Your results", "Ваши результаты"),tr("Compare your two scores and review the evidence behind each decision.", "Сравните оба балла и посмотрите, на чём основан каждый ответ."))}
   <div class="result-grid"><p>${tr("Before", "До обучения")}<strong>${initial}/5</strong></p><p>${tr("After", "После обучения")}<strong>${final}/5</strong></p><p>${tr("Change", "Разница")}<strong>${delta > 0 ? "+" : ""}${delta}</strong></p></div>
   <div class="guide"><p role="status">${statuses[status]}</p>
-  ${["ready","failed"].includes(status) ? `<button id="retry" class="primary">${tr("Save result","Сохранить результат")}</button>` : ""}</div>
+  ${!state.sent ? `<p class="muted">${tr("If the result server is unavailable, download your result file and send it to the project organiser in a private message.", "Если сервер недоступен, скачайте файл с результатом и отправьте его организатору в личном сообщении.")}</p>
+  <div class="report-actions">
+    ${["ready","failed"].includes(status) ? `<button id="retry" class="primary">${tr("Try sending again","Повторить отправку")}</button>` : ""}
+    <button id="download-result">${tr("Download result file","Скачать файл с результатом")}</button>
+  </div>` : ""}</div>
   <section><h2>${tr("Before you share", "Перед тем как поделиться")}</h2><ol><li>${tr("Find the original source and check its date.", "Найдите первоисточник и проверьте его дату.")}</li><li>${tr("Compare the exact claim with the facts in the report.", "Сравните точное утверждение с фактами в тексте.")}</li><li>${tr("Wait before sharing if the evidence is missing.", "Повремените с репостом, если доказательств недостаточно.")}</li></ol></section>
   ${[[before(),state.before,"Before"],[after(),state.after,"After"]].map(([cases,answers,label]) => `<section class="review"><h2>${tr(`Review · ${label}`, `Разбор · ${label === "Before" ? "До обучения" : "После обучения"}`)}</h2>${cases.map((story,i) =>
   `<details><summary>${i+1}. ${tr(story.claim,story.ru.claim)}</summary><p>${tr("Your answer","Ваш ответ")}: <strong>${verdict(answers[i])}</strong> · ${tr("Best answer","Верный ответ")}: <strong>${verdict(story.verdict)}</strong></p><p>${tr(story.explanation,story.ru.explanation)}</p>${source(story)}</details>`).join("")}</section>`).join("")}
   <button id="restart" ${submitting ? "disabled" : ""}>${tr("Start a new run", "Начать заново")}</button>`;
   const retry = screen.querySelector("#retry");
   if (retry) retry.onclick = submit;
+  const download = screen.querySelector("#download-result");
+  if (download) download.onclick = downloadResult;
   screen.querySelector("#restart").onclick = () => {
-    if (!confirm(englishOnly ? "Clear this run from this browser and start again?" : "Clear this run from this browser and start again? (Очистить это прохождение в браузере и начать заново?)")) return;
+    const english = state.sent ? "Clear this run from this browser and start again?" : "Download your result first if you need it. Clear this run from this browser and start again?";
+    const russian = state.sent ? "Удалить это прохождение из браузера и начать заново?" : "Если нужен результат, сначала скачайте его. Удалить это прохождение из браузера и начать заново?";
+    if (!confirm(englishOnly ? english : `${english} (${russian})`)) return;
     state = fresh();
     reportError = false;
     save();
